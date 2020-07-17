@@ -9,8 +9,33 @@ A sudoku game and a solver with text for display.
 """
 from typing import List, Optional, Tuple
 
-SQUARE_DIM = 2
-BOARD_DIM = 1
+SQUARE_DIM = 3
+BOARD_DIM = 3
+
+
+def board_valid(board: [List[List]], num: int, position: Tuple[int, int]) -> bool:
+    """Check if a purposed input @num at @position will make @board valid or not
+    """
+    row_pos, col_pos = position[0], position[1]
+
+    # Check validation on the same row
+    for col in range(len(board[0])):
+        if col != col_pos and board[row_pos][col] == num:
+            return False
+
+    # Check validation on the same column
+    for row in range(len(board)):
+        if row != row_pos and board[row][col_pos] == num:
+            return False
+
+    # Check validation in the same square
+    sqr_col = row_pos // SQUARE_DIM
+    sqr_row = col_pos // SQUARE_DIM
+    for col in range(sqr_col * SQUARE_DIM, (sqr_col + 1) * SQUARE_DIM):
+        for row in range(sqr_row * SQUARE_DIM, (sqr_row + 1) * SQUARE_DIM):
+            if col != col_pos and row != row_pos and board[row][col] == num:
+                return False
+    return True
 
 
 def print_board(square_dim: int, board_dim: int, board: List[List]) -> None:
@@ -33,7 +58,7 @@ def print_board(square_dim: int, board_dim: int, board: List[List]) -> None:
 
 
 def find_empty(board: List[List]) -> Optional[Tuple[int, int]]:
-    """Find a spot that is not filled. If not found, return None"""
+    """Find a spot on @board that is not filled. If not found, return None"""
     for row in range(len(board)):
         for col in range(len(board[0])):
             if board[row][col] == 0:
@@ -70,3 +95,4 @@ if __name__ == "__main__":
 
     # print_board(SQUARE_DIM, BOARD_DIM, board_3)
     # print(find_empty(board))
+    # print(board_valid(board, 3, (0, 3)))
