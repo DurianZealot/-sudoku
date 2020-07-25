@@ -66,6 +66,7 @@ class Button:
         pygame.draw.rect(surface, self.cur_col, pygame.Rect((self.x, self.y), self.get_button_size()), 0)
         button_text = self.__generate_font().render(self.text, True, self.text_col, None)
         surface.blit(button_text, (self.x, self.y))
+        pygame.display.update()
 
 
 
@@ -147,7 +148,7 @@ class Grid:
     A Sudoku Grid, consists of Cubes
     """
 
-    def __init__(self, rows: int, cols: int, board: List[List[int]], width: int, height: int):
+    def __init__(self, rows: int, cols: int, board: List[List[int]], width: int, height: int, square_dim: int):
         """
 
         @model : List[List[int]] to store the current data on the board
@@ -160,6 +161,7 @@ class Grid:
         self.height = height
         self.model = None
         self.selected = None
+        self.square_dim = square_dim
 
     def set_up_cell(self, row: int, col: int, value: int) -> None:
         """
@@ -199,9 +201,9 @@ class Grid:
 
     def draw_grid(self, window: pygame.Surface) -> None:
         # draw grid lines
-        cube_width = self.width / 9
+        cube_width = self.width / self.cols
         for row in range(self.rows + 1):
-            if row % 3 == 0:
+            if row % self.square_dim == 0:
                 thick = 4
             else:
                 thick = 1
@@ -213,7 +215,6 @@ class Grid:
         for row in range(self.rows):
             for col in range(self.cols):
                 self.cubes[row][col].draw(window)
-
 
     def select(self, row, col):
         # Reset all other selected cubes
@@ -246,7 +247,7 @@ class Grid:
 
 
 def make_display(width: int, height: int, background=None) -> pygame.Surface:
-    window = pygame.display.set_mode((width, height))
+    window = pygame.display.set_mode((width, height), pygame.RESIZABLE)
     if background is not None:
         background_image = pygame.image.load(background).convert()
         background_image_rect = background_image.get_rect(center=window.get_rect().center)
@@ -285,19 +286,47 @@ def render_text(window: pygame.Surface,
     # also return top right and bottom right position of the box
     return [text_box, top_right, bottom_right]
 
+def redraw_grid(window: pygame.Surface, board: Grid, time: float):
+    # Draw the background
+    make_display(window.get_width(), window.get_height(), "sudoku_background.jpeg")
+
+    # Draw the Grid
+    board.draw_grid(window)
+
+    pygame.display.update()
 
 def main():
+    # initialize the setting on the sudoku board
     font = pygame.font.Font("/Library/Fonts/Herculanum.ttf", 50)
     pygame.display.set_caption("Sudoku")
     sudoku_img = pygame.image.load("icon.png")
     pygame.display.set_icon(sudoku_img)
-    sqr_dim, board_dim = intro_window(font)
-    # sudoku_window = make_display(1000, 1000, "sudoku_background.jpeg")
-    # pygame.display.update()
-    # while True:
-    #     events = pygame.event.get()
-    #     for event in events:
-    #         print(event)
+
+    # get the user-defined size of the board
+    # number of cubes : (sqr_dim ** 2) ** 2
+    sqr_dim = intro_window(font)
+
+    # shift to the sudoku board
+    sudoku_window = make_display(sqr_dim**2*60, sqr_dim**2*60+100, "sudoku_background.jpeg")
+
+    init_board = [[0 for i in range(sqr_dim ** 2)] for i in range(sqr_dim ** 2)]
+    init_grid = Grid(sqr_dim ** 2, sqr_dim ** 2, init_board, sqr_dim ** 2*60, sqr_dim ** 2*60, sqr_dim)
+
+    redraw_grid(sudoku_window, init_grid, 10.0)
+    set_button = Button("MarkerFelt", 30, "SET", pygame.Color("white"),  pygame.Color("grey"), pygame.Color("green"))
+    set_button_rect = set_button.create_button(sudoku_window, 0, sqr_dim**2*60+30)
+
+    while True:
+        for event in pygame.event.get():
+            # update the display when the user resize the window
+            if event.type is pygame.RESIZABLE:
+                pygame.display.update()
+            # if the user set the board
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if set_button_rect.collidepoint(event.pos):
+                    set_button.press_the_button(sudoku_window)
+                   
+
 
 
 def intro_window(font):
@@ -309,23 +338,13 @@ def intro_window(font):
                                                   (255, 255, 255),
                                                   "American Typewriter",
                                                   40)
-    board_text_box, tr_bo, br_bo = render_text(main_window,
-                                               "Board Dimension: ",
-                                               1,
-                                               300 + square_text_box.get_height() + 100,
-                                               (255, 255, 255),
-                                               "American Typewriter",
-                                               40)
     input_box_sqr = pygame.Rect((tr_sqr[0] + 10, tr_sqr[1]), (200, br_sqr[1] - tr_sqr[1]))
-    input_box_bo = pygame.Rect((tr_bo[0] + 10, tr_bo[1]), (200, br_bo[1] - tr_bo[1]))
     color_inactive = pygame.Color('grey')
     color_active = pygame.Color('green')
     color_sqr = color_bo = color_inactive
-    active_sqr = active_bo = False
+    active_sqr = False
     text_sqr = pre_text_sqr = ''
-    text_bo = pre_text_bo = ''
     square_dim_set = 0
-    bo_dim_set = 0
 
     set_button = Button("Arial", 40, "ALL SET", pygame.Color("white"), pygame.Color("grey"), pygame.Color("green"))
     set_button_rect = set_button.create_button(main_window, 500, 600)
@@ -333,7 +352,7 @@ def intro_window(font):
     while True:
         events = pygame.event.get()
         for event in events:
-            # if square_dim_set != 0 and bo_dim_set != 0:
+            # if square_dim_set != 0:
             if event.type == pygame.QUIT:
                 run = False
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -341,14 +360,10 @@ def intro_window(font):
                     active_sqr = not active_sqr
                 else:
                     active_sqr = False
-                if input_box_bo.collidepoint(event.pos):
-                    active_bo = not active_sqr
-                else:
-                    active_bo = False
                 if set_button_rect.collidepoint(event.pos):
-                    if square_dim_set != 0 and bo_dim_set != 0:
+                    if square_dim_set != 0:
                         set_button.press_the_button(main_window)
-                        return (square_dim_set, bo_dim_set)
+                        return square_dim_set
 
             if event.type == pygame.KEYDOWN:
                 if active_sqr:
@@ -361,24 +376,11 @@ def intro_window(font):
                     else:
                         text_sqr += event.unicode
 
-                if active_bo:
-                    if event.key == pygame.K_RETURN:
-                        bo_dim_set = int(text_bo)
-                        active_bo = not active_bo
-                        print(bo_dim_set)
-                    elif event.key == pygame.K_BACKSPACE:
-                        text_bo = text_bo[:-1]
-                    else:
-                        text_bo += event.unicode
             color_sqr = color_active if active_sqr else color_inactive
-            color_bo = color_active if active_bo else color_inactive
 
         pygame.draw.rect(main_window, color_sqr, input_box_sqr, 0)
-        pygame.draw.rect(main_window, color_bo, input_box_bo, 0)
         txt_surface_sqr = font.render(text_sqr, True, pygame.Color('white'), )
-        txt_surface_bo = font.render(text_bo, True, pygame.Color('white'), )
         main_window.blit(txt_surface_sqr, (tr_sqr[0] + 10, tr_sqr[1]))
-        main_window.blit(txt_surface_bo, (tr_bo[0] + 10, tr_bo[1]))
         pygame.display.update()
 
 
