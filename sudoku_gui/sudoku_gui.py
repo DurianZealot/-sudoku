@@ -97,6 +97,10 @@ class Cube:
         self.width = width
         self.height = height
         self.selected = False
+        self.fixed = False
+
+    def fix_value(self) -> None:
+        self.fixed = True
 
     def draw(self, window: pygame.Surface) -> None:
         """
@@ -105,42 +109,55 @@ class Cube:
 
         font = pygame.font.SysFont("Marker Felt", 40)
 
-        gap = self.width / 9
+        gap = self.width
+
         col_des = self.col * gap
         row_des = self.row * gap
 
         # if the slot is to be filled and the user is trying to fill it. Display the number in grey
-        if self.temp != 0 and self.value == 0:
+        if self.value == 0 and self.temp != 0:
             # generate a Surface num_text to display
             num_text = font.render(str(self.temp), True, (128, 128, 128), None)
             # blit the number on the grid surface
             window.blit(num_text, (
-                col_des + (gap / 2 - num_text.get_width() / 2), row_des + (gap / 2 - num_text.get_height() / 2)))
+                row_des + (gap / 2 - num_text.get_width() / 2), col_des + (gap / 2 - num_text.get_height() / 2)))
+
         # if the slot is filled, display the number in black
         elif self.value != 0:
             num_text = font.render(str(self.value), True, (0, 0, 0), None)
             window.blit(num_text, (
-                col_des + (gap / 2 - num_text.get_width() / 2), row_des + (gap / 2 - num_text.get_height() / 2)))
+                row_des + (gap / 2 - num_text.get_width() / 2), col_des + (gap / 2 - num_text.get_height() / 2)))
 
-        # if the slot is empty, do not draw
+        # if the slot is empty and not selected, do nothing
 
         # if the slot is select by the user, draw a red square
         if self.selected:
-            pygame.draw.rect(window, (255, 0, 0), pygame.Rect(col_des, row_des, gap, gap), 5)
+            pygame.draw.rect(window, (255, 0, 0), pygame.Rect(row_des, col_des, gap, gap), 5)
 
-        def set(self, value: int) -> None:
-            """
-            Set the cell value
-            """
 
-            self.value = value
 
-        def set_temp(self, temp: int) -> None:
-            """
-             Set the temp value
-            """
 
-            self.temp = temp
+    def set(self, value: int) -> None:
+        """
+        Set the cell value
+        """
+
+        self.value = value
+
+    def set_temp(self, temp: int) -> None:
+        """
+         Set the temp value
+        """
+
+        self.temp = temp
+
+    def select(self) -> None:
+        self.selected = True
+
+    def unselect(self) -> None:
+        self.selected = False
+
+
 
 
 class Grid:
@@ -162,6 +179,8 @@ class Grid:
         self.model = None
         self.selected = None
         self.square_dim = square_dim
+        self.set = False
+        self.selected = None
 
     def set_up_cell(self, row: int, col: int, value: int) -> None:
         """
@@ -218,9 +237,9 @@ class Grid:
 
     def select(self, row, col):
         # Reset all other selected cubes
-        for row in range(self.rows):
-            for col in range(self.cols):
-                self.cubes[row][col].unselect()
+        for r in range(self.rows):
+            for c in range(self.cols):
+                self.cubes[r][c].unselect()
 
         self.cubes[row][col].select()
         self.selected = (row, col)
@@ -231,7 +250,7 @@ class Grid:
         """
         x, y = pos
         if 0<= x <= self.width and 0<= y <= self.height:
-            cube_width = self.width / 9
+            cube_width = self.width / (self.square_dim**2)
             x = x // cube_width
             y = y // cube_width
             return (int(x), int(y))
@@ -244,6 +263,10 @@ class Grid:
                 if self.cubes[row][col].get_value () != 0:
                     return False
         return True
+
+    def sketch_init_board(self, value):
+        print("set " + "( " + str(self.selected[0]) + ", " + str(self.selected[1]) + ")")
+        self.cubes[self.selected[0]][self.selected[1]].set_temp(value)
 
 
 def make_display(width: int, height: int, background=None) -> pygame.Surface:
@@ -293,6 +316,9 @@ def redraw_grid(window: pygame.Surface, board: Grid, time: float):
     # Draw the Grid
     board.draw_grid(window)
 
+    # Draw cubes
+    board.draw_cubes(window)
+
     pygame.display.update()
 
 def main():
@@ -307,25 +333,85 @@ def main():
     sqr_dim = intro_window(font)
 
     # shift to the sudoku board
-    sudoku_window = make_display(sqr_dim**2*60, sqr_dim**2*60+100, "sudoku_background.jpeg")
+    sudoku_window = make_display(sqr_dim**2*50, sqr_dim**2*50+100, "sudoku_background.jpeg")
 
     init_board = [[0 for i in range(sqr_dim ** 2)] for i in range(sqr_dim ** 2)]
-    init_grid = Grid(sqr_dim ** 2, sqr_dim ** 2, init_board, sqr_dim ** 2*60, sqr_dim ** 2*60, sqr_dim)
+    init_grid = Grid(sqr_dim ** 2, sqr_dim ** 2, init_board, sqr_dim ** 2*50, sqr_dim ** 2*50, sqr_dim)
 
     redraw_grid(sudoku_window, init_grid, 10.0)
+
     set_button = Button("MarkerFelt", 30, "SET", pygame.Color("white"),  pygame.Color("grey"), pygame.Color("green"))
-    set_button_rect = set_button.create_button(sudoku_window, 0, sqr_dim**2*60+30)
+    set_button_rect = set_button.create_button(sudoku_window, 0, sqr_dim ** 2 * 50 + 30)
+
+    board_is_set = False
+    key = number = None
+    prev_selected = curr_selected = None
 
     while True:
+        redraw_grid(sudoku_window, init_grid, 10.0)
+        if not board_is_set:
+            set_button_rect = set_button.create_button(sudoku_window, 0, sqr_dim ** 2 * 50 + 30)
         for event in pygame.event.get():
-            # update the display when the user resize the window
-            if event.type is pygame.RESIZABLE:
-                pygame.display.update()
             # if the user set the board
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if set_button_rect.collidepoint(event.pos):
                     set_button.press_the_button(sudoku_window)
-                   
+                # if the user try to enter a value on the board
+                clicked = init_grid.click(event.pos)
+                if clicked is not None:
+                    init_grid.select(clicked[0], clicked[1])
+                    prev_selected = curr_selected
+                    curr_selected = clicked
+                    number = key = None
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_1:
+                    key = 1
+                if event.key == pygame.K_2:
+                    key = 2
+                if event.key == pygame.K_3:
+                    key = 3
+                if event.key == pygame.K_4:
+                    key = 4
+                if event.key == pygame.K_5:
+                    key = 5
+                if event.key == pygame.K_6:
+                    key = 6
+                if event.key == pygame.K_7:
+                    key = 7
+                if event.key == pygame.K_8:
+                    key = 8
+                if event.key == pygame.K_9:
+                    key = 9
+                if event.key == pygame.K_0:
+                    key = 0
+                if event.key == pygame.K_BACKSPACE:
+                    print("Key deleted is entered")
+                    key = None
+                    if number is not None:
+                        if len(str(number)) <= 1:
+                            number = 0
+                        else:
+                            number = int(str(number)[:-1])
+                if number is None:
+                    number = key
+                elif number is not None and key is not None:
+                    number = int(str(number) + str(key))
+            if init_grid.selected is not None and number is not None:
+                if board_is_set is False:
+                    print(init_grid.selected)
+                    print("input value is " + str(number))
+
+                    init_grid.sketch_init_board(number)
+                    key = None
+    
+
+
+
+
+
+
+
+
 
 
 
