@@ -4,11 +4,11 @@
 # @FileName: sudoku_gui.py
 # @Description:
 # @Github:
-
+from math import sqrt
 
 import pygame
 from typing import List, Tuple, Optional
-from sudoku_text import board_valid
+from sudoku_text import *
 
 
 
@@ -157,7 +157,8 @@ class Cube:
     def unselect(self) -> None:
         self.selected = False
 
-
+    def get_temp(self) -> int:
+        return self.temp
 
 
 class Grid:
@@ -181,11 +182,13 @@ class Grid:
         self.square_dim = square_dim
         self.set = False
         self.selected = None
+        self.answer = None
 
     def set_up_cell(self, row: int, col: int, value: int) -> None:
         """
         Set up a cell
         """
+        self.cubes[row][col].set(value)
 
     def update_model(self) -> None:
         """
@@ -269,6 +272,36 @@ class Grid:
         self.cubes[self.selected[0]][self.selected[1]].set_temp(value)
 
 
+    def solvable(self) -> bool:
+        temp = []
+        for i in range(len(self.cubes)):
+            row = []
+            for j in range(len(self.cubes[0])):
+                row.append(self.cubes[j][i].get_temp())
+            temp.append(row)
+
+        if solve_board(int(sqrt(len(self.cubes))), temp):
+            self.answer = temp
+
+            print_board(int(sqrt(len(self.cubes))), int(sqrt(len(self.cubes))), self.answer)
+            
+            return True
+        else:
+            return False
+
+    def set_up(self) -> None:
+        for i in range(len(self.cubes)):
+            for j in range(len(self.cubes[0])):
+                self.cubes[i][j].set(self.cubes[i][j].get_temp())
+                self.cubes[i][j].set_temp(0)
+
+    def reset(self) -> None:
+        for i in range(len(self.cubes)):
+            for j in range(len(self.cubes[0])):
+                self.cubes[i][j].set_temp(0)
+        self.answer = None
+
+
 def make_display(width: int, height: int, background=None) -> pygame.Surface:
     window = pygame.display.set_mode((width, height), pygame.RESIZABLE)
     if background is not None:
@@ -345,7 +378,6 @@ def main():
 
     board_is_set = False
     key = number = None
-    prev_selected = curr_selected = None
 
     while True:
         redraw_grid(sudoku_window, init_grid, 10.0)
@@ -356,12 +388,22 @@ def main():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if set_button_rect.collidepoint(event.pos):
                     set_button.press_the_button(sudoku_window)
+                    if init_grid.solvable():
+                        # if the user enter a board that is solvable
+                        board_is_set = True
+                        # set all all cubes' value
+                        init_grid.set_up()
+                    else:
+                        # if the user enter a board that is not solvable
+                        init_grid.reset()
+
+                        key = number = None
+                        continue
+
                 # if the user try to enter a value on the board
                 clicked = init_grid.click(event.pos)
                 if clicked is not None:
                     init_grid.select(clicked[0], clicked[1])
-                    prev_selected = curr_selected
-                    curr_selected = clicked
                     number = key = None
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
@@ -403,17 +445,6 @@ def main():
 
                     init_grid.sketch_init_board(number)
                     key = None
-    
-
-
-
-
-
-
-
-
-
-
 
 def intro_window(font):
     main_window = make_display(1000, 1000, "ocean.jpg")
