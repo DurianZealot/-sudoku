@@ -284,7 +284,7 @@ class Grid:
             self.answer = temp
 
             print_board(int(sqrt(len(self.cubes))), int(sqrt(len(self.cubes))), self.answer)
-            
+
             return True
         else:
             return False
@@ -300,6 +300,18 @@ class Grid:
             for j in range(len(self.cubes[0])):
                 self.cubes[i][j].set_temp(0)
         self.answer = None
+
+
+    def attempt_validate(self) -> bool:
+        col, row = self.selected
+        if self.answer[row][col] == self.cubes[col][row].get_temp():
+            # the user enter a right value
+            self.cubes[col][row].set(self.cubes[col][row].get_temp())
+            self.cubes[col][row].set_temp(0)
+            return True
+        else:
+            return False
+
 
 
 def make_display(width: int, height: int, background=None) -> pygame.Surface:
@@ -374,31 +386,45 @@ def main():
     redraw_grid(sudoku_window, init_grid, 10.0)
 
     set_button = Button("MarkerFelt", 30, "SET", pygame.Color("white"),  pygame.Color("grey"), pygame.Color("green"))
+    start_button = Button("MarkerFelt", 30, "START", pygame.Color("white"), pygame.Color("grey"), pygame.Color("green"))
+
     set_button_rect = set_button.create_button(sudoku_window, 0, sqr_dim ** 2 * 50 + 30)
 
     board_is_set = False
     key = number = None
+    start = False
 
     while True:
         redraw_grid(sudoku_window, init_grid, 10.0)
         if not board_is_set:
             set_button_rect = set_button.create_button(sudoku_window, 0, sqr_dim ** 2 * 50 + 30)
+        if board_is_set and not start:
+            start_button_rect = start_button.create_button(sudoku_window, 0, sqr_dim ** 2 * 50 + 30)
+
         for event in pygame.event.get():
             # if the user set the board
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if set_button_rect.collidepoint(event.pos):
+                if set_button_rect.collidepoint(event.pos) and not board_is_set:
                     set_button.press_the_button(sudoku_window)
                     if init_grid.solvable():
                         # if the user enter a board that is solvable
                         board_is_set = True
                         # set all all cubes' value
                         init_grid.set_up()
+                        break
                     else:
                         # if the user enter a board that is not solvable
+                        # reset all input in the board
                         init_grid.reset()
 
                         key = number = None
                         continue
+                if not start and board_is_set and start_button_rect.collidepoint(event.pos):
+                    # the user click the start button and the clock count down should start
+                    start_button.press_the_button(sudoku_window)
+                    start = True
+                    break
+
 
                 # if the user try to enter a value on the board
                 clicked = init_grid.click(event.pos)
@@ -439,12 +465,21 @@ def main():
                 elif number is not None and key is not None:
                     number = int(str(number) + str(key))
             if init_grid.selected is not None and number is not None:
-                if board_is_set is False:
-                    print(init_grid.selected)
-                    print("input value is " + str(number))
-
+                if not board_is_set:
                     init_grid.sketch_init_board(number)
-                    key = None
+                if board_is_set:
+                    if start:
+                        init_grid.sketch(number)
+
+                        if init_grid.attempt_validate():
+                            print("validate try")
+                    else:
+                        number = None
+                        pass
+
+                print(init_grid.selected)
+                print("input value is " + str(number))
+                key = None
 
 def intro_window(font):
     main_window = make_display(1000, 1000, "ocean.jpg")
