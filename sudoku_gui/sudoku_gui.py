@@ -4,10 +4,13 @@
 # @FileName: sudoku_gui.py
 # @Description:
 # @Github:
+import sys
 from math import sqrt
-
+import time
 import pygame
 from typing import List, Tuple, Optional
+
+
 from sudoku_text import *
 
 
@@ -160,6 +163,9 @@ class Cube:
     def get_temp(self) -> int:
         return self.temp
 
+    def get_value(self) -> int:
+        return self.value
+
 
 class Grid:
     """
@@ -261,9 +267,9 @@ class Grid:
             return None
 
     def is_finished(self) -> bool:
-        for row in range(self.rows):
-            for col in range(self.cols):
-                if self.cubes[row][col].get_value () != 0:
+        for row in range(len(self.cubes)):
+            for col in range(len(self.cubes[0])):
+                if self.cubes[row][col].get_value() == 0:
                     return False
         return True
 
@@ -366,6 +372,36 @@ def redraw_grid(window: pygame.Surface, board: Grid, time: float):
 
     pygame.display.update()
 
+def update_time(time_diff: int, window: pygame.Surface) -> None:
+    minute = time_diff // 60
+    sec = time_diff % 60
+
+    font = pygame.font.SysFont("Marker Felt", 30)
+    print(f'the size of the window is {window.get_width()} and {window.get_height()}')
+    width = window.get_width()
+    height = window.get_height() - 100
+
+    time_surface = font.render(f'TIME : {minute}:{sec}', True, pygame.Color("Black"))
+    window.blit(time_surface, (width - time_surface.get_width(), height + time_surface.get_height() // 2))
+
+    pygame.display.update()
+
+
+def game_finish(window: pygame.Surface) -> None:
+    pygame.init()
+    font = pygame.font.Font("/Library/Fonts/Herculanum.ttf", 20)
+    game_finish_page = make_display(window.get_width(), window.get_height(), "game_over.jpg")
+    congrats = font.render("Congrulations!", True, pygame.Color("white"))
+    window.blit(congrats,
+                ((window.get_width() - congrats.get_width()) // 2,  (window.get_height() - congrats.get_height()) // 2))
+    pygame.display.update()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit(0)
+
 def main():
     # initialize the setting on the sudoku board
     font = pygame.font.Font("/Library/Fonts/Herculanum.ttf", 50)
@@ -383,25 +419,39 @@ def main():
     init_board = [[0 for i in range(sqr_dim ** 2)] for i in range(sqr_dim ** 2)]
     init_grid = Grid(sqr_dim ** 2, sqr_dim ** 2, init_board, sqr_dim ** 2*50, sqr_dim ** 2*50, sqr_dim)
 
-    redraw_grid(sudoku_window, init_grid, 10.0)
 
     set_button = Button("MarkerFelt", 30, "SET", pygame.Color("white"),  pygame.Color("grey"), pygame.Color("green"))
     start_button = Button("MarkerFelt", 30, "START", pygame.Color("white"), pygame.Color("grey"), pygame.Color("green"))
-
-    set_button_rect = set_button.create_button(sudoku_window, 0, sqr_dim ** 2 * 50 + 30)
+    pause_button = Button("MarkerFelt", 30, "PAUSE", pygame.Color("white"), pygame.Color("grey"), pygame.Color("red"))
 
     board_is_set = False
     key = number = None
     start = False
+    pause = False
 
     while True:
         redraw_grid(sudoku_window, init_grid, 10.0)
+
+        if init_grid.is_finished():
+            break
+        if start and not pause:
+            # update the running time
+            play_time = round(time.time() - start_time)
+            update_time(play_time, sudoku_window)
+
         if not board_is_set:
             set_button_rect = set_button.create_button(sudoku_window, 0, sqr_dim ** 2 * 50 + 30)
         if board_is_set and not start:
             start_button_rect = start_button.create_button(sudoku_window, 0, sqr_dim ** 2 * 50 + 30)
+        if start:
+            pause_button_rect = pause_button.create_button(sudoku_window, 0, sqr_dim ** 2 * 50 + 30)
+
 
         for event in pygame.event.get():
+            # if the user close the window
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit(0)
             # if the user set the board
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if set_button_rect.collidepoint(event.pos) and not board_is_set:
@@ -422,9 +472,14 @@ def main():
                 if not start and board_is_set and start_button_rect.collidepoint(event.pos):
                     # the user click the start button and the clock count down should start
                     start_button.press_the_button(sudoku_window)
+                    start_time = time.time()
                     start = True
                     break
 
+                if start and pause_button_rect.collidepoint(event.pos):
+                    pause = not pause
+                    start_time = round(time.time() - start_time)
+                    pause_button.press_the_button(sudoku_window)
 
                 # if the user try to enter a value on the board
                 clicked = init_grid.click(event.pos)
@@ -471,15 +526,17 @@ def main():
                     if start:
                         init_grid.sketch(number)
 
-                        if init_grid.attempt_validate():
-                            print("validate try")
+                        init_grid.attempt_validate()
+
                     else:
                         number = None
-                        pass
 
                 print(init_grid.selected)
                 print("input value is " + str(number))
                 key = None
+    game_finish(sudoku_window)
+
+
 
 def intro_window(font):
     main_window = make_display(1000, 1000, "ocean.jpg")
@@ -504,6 +561,9 @@ def intro_window(font):
     while True:
         events = pygame.event.get()
         for event in events:
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit(0)
             # if square_dim_set != 0:
             if event.type == pygame.QUIT:
                 run = False
