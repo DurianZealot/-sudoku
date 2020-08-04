@@ -2,19 +2,13 @@
 # @Time    : 2020-07-18 1:10 AM
 # @Author  : Yolanda (Yiqi) Zhi
 # @FileName: sudoku_gui.py
-# @Description:
-# @Github:
+# @Description: A sudoku game with clock.
+# @Github: DurianZealot
 import sys
-from math import sqrt
 import time
 import pygame
-from typing import List, Tuple, Optional
-
-
+from math import sqrt
 from sudoku_text import *
-
-
-
 
 # initialize the font module
 pygame.font.init()
@@ -23,8 +17,16 @@ pygame.init()
 
 
 class Button:
-
-    def __init__(self, font, font_size, text, text_col, inactive_col, active_col):
+    """
+    Merge functions for a Button
+    """
+    def __init__(self,
+                 font: str,
+                 font_size: int,
+                 text: str,
+                 text_col: pygame.Color,
+                 inactive_col: pygame.Color,
+                 active_col: pygame.Color):
         self.text = text
         self.inactive_col = inactive_col
         self.active_col = active_col
@@ -35,18 +37,26 @@ class Button:
         self.x = None
         self.y = None
 
-    def __generate_font(self):
+    def __generate_font(self) -> pygame.font:
+        """
+        Generate font for the button
+        """
         return pygame.font.SysFont(self.font, self.font_size)
 
-    def get_button_size(self):
+    def get_button_size(self) -> Tuple[int, int]:
+        """
+        Return (width, height) of the Button
+        """
         w, h = self.__generate_font().size(self.text)
         return (w, h)
 
-    def create_button(self, surface, x, y):
-        # set up the button coordinate
+    def create_button(self, surface, x, y) -> pygame.Rect:
+        """
+        Initialize a button and return a pygame.Rect of the Button
+        """
+        # set the coordinate
         self.x = x
         self.y = y
-
 
         # draw the button
         pygame.draw.rect(surface, self.inactive_col, pygame.Rect((x, y), self.get_button_size()), 0)
@@ -61,7 +71,10 @@ class Button:
         pygame.display.update()
         return button_rect
 
-    def press_the_button(self, surface):
+    def press_the_button(self, surface: pygame.Surface) -> None:
+        """
+        Change the color when the button is pressed
+        """
         if self.cur_col == self.inactive_col:
             self.cur_col = self.active_col
         else:
@@ -72,18 +85,17 @@ class Button:
         pygame.display.update()
 
 
-
-    def get_color(self):
-        return self.cur_col
-
-
-
 class Cube:
     """
     A cube that is used to represent a cell in the sudoku board
     """
 
-    def __init__(self, value: int, row: int, col: int, width: float, height: float):
+    def __init__(self,
+                 value: int,
+                 row: int,
+                 col: int,
+                 width: float,
+                 height: float):
         """
         value: the value of a slot
         row: the row number
@@ -101,9 +113,6 @@ class Cube:
         self.height = height
         self.selected = False
         self.fixed = False
-
-    def fix_value(self) -> None:
-        self.fixed = True
 
     def draw(self, window: pygame.Surface) -> None:
         """
@@ -137,9 +146,6 @@ class Cube:
         if self.selected:
             pygame.draw.rect(window, (255, 0, 0), pygame.Rect(row_des, col_des, gap, gap), 5)
 
-
-
-
     def set(self, value: int) -> None:
         """
         Set the cell value
@@ -155,6 +161,9 @@ class Cube:
         self.temp = temp
 
     def select(self) -> None:
+        """
+        Set the cube to be selected
+        """
         self.selected = True
 
     def unselect(self) -> None:
@@ -172,15 +181,25 @@ class Grid:
     A Sudoku Grid, consists of Cubes
     """
 
-    def __init__(self, rows: int, cols: int, board: List[List[int]], width: int, height: int, square_dim: int):
-        """
+    def __init__(self,
+                 rows: int,
+                 cols: int,
+                 board: List[List[int]],
+                 width: int,
+                 height: int,
+                 square_dim: int):
 
+        """
         @model : List[List[int]] to store the current data on the board
         """
         self.rows = rows
         self.cols = cols
-        self.cubes = [[Cube(board[row][col], row, col, width / cols, height / rows) for col in range(cols)] for row in
-                      range(rows)]
+        self.cubes = [[Cube(board[row][col],
+                            row,
+                            col,
+                            width / cols,
+                            height / rows) for col in range(cols)]
+                      for row in range(rows)]
         self.width = width
         self.height = height
         self.model = None
@@ -196,39 +215,17 @@ class Grid:
         """
         self.cubes[row][col].set(value)
 
-    def update_model(self) -> None:
-        """
-        Update model
-        """
-        self.model = [[self.cubes[row][col].get_value() for col in range(self.cols)] for row in range(self.rows)]
-
-    def place(self, value: int) -> bool:
-        """
-        ONLY triggered by the user pressed ENTER
-        Place a value at the selected cell and check if valid.
-        If valid, return True.Otherwise, return False and reset the cell.
-        """
-        row, col = self.selected
-        # only allow the user to click on cubes that is not filled
-        if self.cubes[row][col].get_value() == 0:
-            self.cubes[row][col].set(value)
-            self.update_model()
-
-            # if the value that user enter is correccted, return true
-            if board_valid(self.model, value, (row, col)) and is_correst(self.model):
-                return True
-            else:
-                self.cubes[row][col].set(0)
-                self.cubes[row][col].set_temp(0)
-                self.update_model()
-                return False
-
     def sketch(self, value: int) -> None:
+        """
+        Sketch a value for this cube
+        """
         row, col = self.selected
         self.cubes[row][col].set_temp(value)
 
     def draw_grid(self, window: pygame.Surface) -> None:
-        # draw grid lines
+        """
+        Draw the grid's lines
+        """
         cube_width = self.width / self.cols
         for row in range(self.rows + 1):
             if row % self.square_dim == 0:
@@ -240,11 +237,17 @@ class Grid:
             pygame.draw.line(window, (0, 0, 0), (row * cube_width, 0), (row * cube_width, self.height), thick)
 
     def draw_cubes(self, window: pygame.Surface) -> None:
+        """
+        Draw all cubes
+        """
         for row in range(self.rows):
             for col in range(self.cols):
                 self.cubes[row][col].draw(window)
 
-    def select(self, row, col):
+    def select(self, row: int, col: int) -> None:
+        """
+        Select cube at (row, col)
+        """
         # Reset all other selected cubes
         for r in range(self.rows):
             for c in range(self.cols):
@@ -255,10 +258,11 @@ class Grid:
 
     def click(self, pos: Tuple[int, int]) -> Optional[Tuple[int, int]]:
         """
-        Get the click from the user and transcribe it as information based on the grid. If out of range of the board, return None. Otherwise, return (row, col) of the cube being clicked.
+        Get the click from the user and transcribe it as information based on the grid.
+        If out of range of the board, return None. Otherwise, return (row, col) of the cube being clicked.
         """
         x, y = pos
-        if 0<= x <= self.width and 0<= y <= self.height:
+        if 0 <= x <= self.width and 0 <= y <= self.height:
             cube_width = self.width / (self.square_dim**2)
             x = x // cube_width
             y = y // cube_width
@@ -267,18 +271,25 @@ class Grid:
             return None
 
     def is_finished(self) -> bool:
+        """
+        Return True if all cubes are filled with the correct number.
+        Otherwise, return False
+        """
         for row in range(len(self.cubes)):
             for col in range(len(self.cubes[0])):
                 if self.cubes[row][col].get_value() == 0:
                     return False
         return True
 
-    def sketch_init_board(self, value):
-        print("set " + "( " + str(self.selected[0]) + ", " + str(self.selected[1]) + ")")
+    def sketch_init_board(self, value: int) -> None:
+        """ Set temp value """
         self.cubes[self.selected[0]][self.selected[1]].set_temp(value)
 
-
     def solvable(self) -> bool:
+        """
+        Return True if the user-defined sudoku board is solvable.
+        Otherwise, return False.
+        """
         temp = []
         for i in range(len(self.cubes)):
             row = []
@@ -288,27 +299,30 @@ class Grid:
 
         if solve_board(int(sqrt(len(self.cubes))), temp):
             self.answer = temp
-
-            print_board(int(sqrt(len(self.cubes))), int(sqrt(len(self.cubes))), self.answer)
-
             return True
         else:
             return False
 
     def set_up(self) -> None:
+        """ Set up the grid """
         for i in range(len(self.cubes)):
             for j in range(len(self.cubes[0])):
                 self.cubes[i][j].set(self.cubes[i][j].get_temp())
                 self.cubes[i][j].set_temp(0)
 
     def reset(self) -> None:
+        """ Reset the grid """
         for i in range(len(self.cubes)):
             for j in range(len(self.cubes[0])):
                 self.cubes[i][j].set_temp(0)
         self.answer = None
 
-
     def attempt_validate(self) -> bool:
+        """
+        Check if the user input is valid.
+        If valid, update the cube's value and return True
+        Otherwise, do nothing and return False.
+        """
         col, row = self.selected
         if self.answer[row][col] == self.cubes[col][row].get_temp():
             # the user enter a right value
@@ -319,8 +333,10 @@ class Grid:
             return False
 
 
-
-def make_display(width: int, height: int, background=None) -> pygame.Surface:
+def make_display(width: int,
+                 height: int,
+                 background=None) -> pygame.Surface:
+    """ Return a surface with width, height and background """
     window = pygame.display.set_mode((width, height), pygame.RESIZABLE)
     if background is not None:
         background_image = pygame.image.load(background).convert()
@@ -337,7 +353,10 @@ def render_text(window: pygame.Surface,
                 color: Tuple[int, int, int],
                 font: str,
                 font_size: int) -> List:
-
+    """
+    Render text at window
+    Return a list of coordinates and rect of the text surface
+    """
     # initialize font
     font_init = pygame.font.SysFont(font, font_size)
 
@@ -360,7 +379,8 @@ def render_text(window: pygame.Surface,
     # also return top right and bottom right position of the box
     return [text_box, top_right, bottom_right]
 
-def redraw_grid(window: pygame.Surface, board: Grid, time: float):
+
+def redraw_grid(window: pygame.Surface, board: Grid):
     # Draw the background
     make_display(window.get_width(), window.get_height(), "sudoku_background.jpeg")
 
@@ -372,12 +392,15 @@ def redraw_grid(window: pygame.Surface, board: Grid, time: float):
 
     pygame.display.update()
 
+
 def update_time(time_diff: int, window: pygame.Surface) -> None:
+    """
+    Update the display of the running time
+    """
     minute = time_diff // 60
     sec = time_diff % 60
 
     font = pygame.font.SysFont("Marker Felt", 30)
-    print(f'the size of the window is {window.get_width()} and {window.get_height()}')
     width = window.get_width()
     height = window.get_height() - 100
 
@@ -388,9 +411,10 @@ def update_time(time_diff: int, window: pygame.Surface) -> None:
 
 
 def game_finish(window: pygame.Surface) -> None:
+    """ Update the window when the user has finished the game"""
     pygame.init()
     font = pygame.font.Font("/Library/Fonts/Herculanum.ttf", 20)
-    game_finish_page = make_display(window.get_width(), window.get_height(), "game_over.jpg")
+    make_display(window.get_width(), window.get_height(), "game_over.jpg")
     congrats = font.render("Congrulations!", True, pygame.Color("white"))
     window.blit(congrats,
                 ((window.get_width() - congrats.get_width()) // 2,  (window.get_height() - congrats.get_height()) // 2))
@@ -401,6 +425,7 @@ def game_finish(window: pygame.Surface) -> None:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit(0)
+
 
 def main():
     # initialize the setting on the sudoku board
@@ -419,7 +444,6 @@ def main():
     init_board = [[0 for i in range(sqr_dim ** 2)] for i in range(sqr_dim ** 2)]
     init_grid = Grid(sqr_dim ** 2, sqr_dim ** 2, init_board, sqr_dim ** 2*50, sqr_dim ** 2*50, sqr_dim)
 
-
     set_button = Button("MarkerFelt", 30, "SET", pygame.Color("white"),  pygame.Color("grey"), pygame.Color("green"))
     start_button = Button("MarkerFelt", 30, "START", pygame.Color("white"), pygame.Color("grey"), pygame.Color("green"))
     pause_button = Button("MarkerFelt", 30, "PAUSE", pygame.Color("white"), pygame.Color("grey"), pygame.Color("red"))
@@ -430,7 +454,7 @@ def main():
     pause = False
 
     while True:
-        redraw_grid(sudoku_window, init_grid, 10.0)
+        redraw_grid(sudoku_window, init_grid)
 
         if init_grid.is_finished():
             break
@@ -445,7 +469,6 @@ def main():
             start_button_rect = start_button.create_button(sudoku_window, 0, sqr_dim ** 2 * 50 + 30)
         if start:
             pause_button_rect = pause_button.create_button(sudoku_window, 0, sqr_dim ** 2 * 50 + 30)
-
 
         for event in pygame.event.get():
             # if the user close the window
@@ -508,7 +531,6 @@ def main():
                 if event.key == pygame.K_0:
                     key = 0
                 if event.key == pygame.K_BACKSPACE:
-                    print("Key deleted is entered")
                     key = None
                     if number is not None:
                         if len(str(number)) <= 1:
@@ -531,14 +553,14 @@ def main():
                     else:
                         number = None
 
-                print(init_grid.selected)
-                print("input value is " + str(number))
                 key = None
     game_finish(sudoku_window)
 
 
-
 def intro_window(font):
+    """
+    The intro window for the user to enter the size of the sudoku grid
+    """
     main_window = make_display(1000, 1000, "ocean.jpg")
     square_text_box, tr_sqr, br_sqr = render_text(main_window,
                                                   "Square Dimension: ",
@@ -550,9 +572,9 @@ def intro_window(font):
     input_box_sqr = pygame.Rect((tr_sqr[0] + 10, tr_sqr[1]), (200, br_sqr[1] - tr_sqr[1]))
     color_inactive = pygame.Color('grey')
     color_active = pygame.Color('green')
-    color_sqr = color_bo = color_inactive
+    color_sqr = color_inactive
     active_sqr = False
-    text_sqr = pre_text_sqr = ''
+    text_sqr = ''
     square_dim_set = 0
 
     set_button = Button("Arial", 40, "ALL SET", pygame.Color("white"), pygame.Color("grey"), pygame.Color("green"))
@@ -564,9 +586,6 @@ def intro_window(font):
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit(0)
-            # if square_dim_set != 0:
-            if event.type == pygame.QUIT:
-                run = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if input_box_sqr.collidepoint(event.pos):
                     active_sqr = not active_sqr
@@ -582,7 +601,6 @@ def intro_window(font):
                     if event.key == pygame.K_RETURN:
                         square_dim_set = int(text_sqr)
                         active_sqr = not active_sqr
-                        print(square_dim_set)
                     elif event.key == pygame.K_BACKSPACE:
                         text_sqr = text_sqr[:-1]
                     else:
@@ -594,9 +612,7 @@ def intro_window(font):
         txt_surface_sqr = font.render(text_sqr, True, pygame.Color('white'), )
         main_window.blit(txt_surface_sqr, (tr_sqr[0] + 10, tr_sqr[1]))
         pygame.display.update()
-
-
-
+        
 
 if __name__ == "__main__":
     main()
